@@ -8,10 +8,9 @@ const router = express.Router()
 
 router.post('/register',upload.single('profile_image'),authController.register)
 router.post('/login', authController.login)
-router.use(middleware)
-router.get('/me', authController.getUser)
-router.put('/update/:id', upload.single('profile_image'), authController.update)
-router.delete('/delete/:id', authController.delete)
+router.get('/me',middleware, authController.getUser)
+router.put('/update/:id', middleware, upload.single('profile_image'), authController.update)
+router.delete('/delete/:id', middleware, authController.delete)
 
 
 

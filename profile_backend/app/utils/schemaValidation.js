@@ -12,6 +12,14 @@ const authValidation = joi.object({
     profile_image: joi.string().optional()
 })
 
+const updateValidation = joi.object({
+    name: joi.string().min(3).max(30).optional(),
+    email: joi.string().email({
+        minDomainSegments: 2, tlds:{allow:['com', 'net', 'in', 'org']}
+    }).optional(),
+    password: joi.string().min(6).max(10).optional(),
+    about: joi.string().max(200).allow({}, ''),
+    profile_image: joi.string().optional()
+})
 
-
-module.exports = authValidation
+module.exports = {authValidation, updateValidation}

@@ -1,8 +1,8 @@
 const Limiter=require('express-rate-limit')
 
 const limiter=Limiter({
-    windowMs: 2 * 60 * 1000, 
-    limit: 10, 
+    windowMs: 1 * 60 * 1000, 
+    limit: 100, 
     standardHeaders: 'draft-8', 
     legacyHeaders: false, 
     ipv6Subnet: 56, 

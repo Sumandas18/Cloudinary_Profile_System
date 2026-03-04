@@ -1,18 +1,15 @@
-const bycrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const path = require("path");
 const fs = require("fs");
-
 const authModel = require("../models/authModel");
-const authValidation = require("../utils/schemaValidation");
+const { authValidation, updateValidation } = require("../utils/schemaValidation");
+const deleteFile = require("../utils/deleteImage");
+
 
 const SALT = 10;
 
 class AuthController {
-
-
-
-
   async register(req, res) {
     try {
       const authData = {
@@ -38,7 +35,7 @@ class AuthController {
           message: "User already exists with this email",
         });
       }
-      const hashedPassword = await bycrypt.hash(value.password, SALT);
+      const hashedPassword = await bcrypt.hash(value.password, SALT);
       const newUser = new authModel({
         name: value.name,
         email: value.email,
@@ -66,6 +63,7 @@ class AuthController {
 
 
 
+
   async login(req, res) {
     try {
       const { email, password } = req.body;
@@ -84,7 +82,7 @@ class AuthController {
         });
       }
 
-      const isMatch = await bycrypt.compare(password, user.password);
+      const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(400).json({
           success: false,
@@ -93,6 +91,7 @@ class AuthController {
       }
       const token = jwt.sign(
         {
+          id: user._id,
           name: user.name,
           email: user.email,
           profile_image: user.profile_image,
@@ -105,6 +104,7 @@ class AuthController {
         success: true,
         message: "Login successful",
         data: {
+          id: user._id,
           name: user.name,
           email: user.email,
           profile_image: user.profile_image,
@@ -125,42 +125,76 @@ class AuthController {
 
 
 
+
+
+
   async update(req, res) {
     try {
       const id = req.params.id;
-      const updateData = {
-        name: req.body.name,
-        email: req.body.email,
-        password: req.body.password,
-        about: req.body.about,
-      };
 
-      if (req.file) {
-        const user = await authModel.findById(id);
-        if (user && user.profile_image) {
-          const imagePath = user.profile_image;
-          if (fs.existsSync(imagePath)) {
-            fs.unlinkSync(imagePath);
-          }
-        }
-        updateData.profile_image = `uploads/${req.file.filename}`;
-      }
-      const data = await authModel.findByIdAndUpdate(id, updateData, {
-        new: true,
-      });
-      if (!data) {
+      const updateData = {};
+      if (req.body.name) updateData.name = req.body.name;
+      if (req.body.email) updateData.email = req.body.email;
+      if (req.body.password) updateData.password = req.body.password;
+      if (req.body.about !== undefined) updateData.about = req.body.about;
+      const user = await authModel.findById(id);
+
+      if (!user) {
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
-      res.status(200).json({
+      if (req.file) {
+        if (user.profile_image) {
+          const oldImagePath = path.join(__dirname, "../../", user.profile_image);
+          deleteFile(oldImagePath);
+        }
+        updateData.profile_image = `uploads/${req.file.filename}`;
+      } else if (req.body.profile_image) {
+        updateData.profile_image = req.body.profile_image;
+      }
+
+      const { error, value } = updateValidation.validate(updateData);
+
+      if (error) {
+        const messages = error.details.map((err) => err.message);
+        if (req.file) {
+          const uploadedFile = path.join(__dirname, "../../uploads", req.file.filename);
+          deleteFile(uploadedFile);
+        }
+
+        return res.status(400).json({
+          success: false,
+          message: messages,
+        });
+      }
+      if (value.password) {
+        value.password = await bcrypt.hash(value.password, SALT);
+      }
+      const updatedUser = await authModel.findByIdAndUpdate(id, value, {
+        new: true,
+      });
+
+      const responseUser = {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        profile_image: updatedUser.profile_image,
+        about: updatedUser.about,
+        _id: updatedUser._id,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+      };
+
+      return res.status(200).json({
         success: true,
         message: "User updated successfully",
-        data: data,
+        data: responseUser,
       });
     } catch (error) {
-      res.status(500).json({
+      console.error(error);
+
+      return res.status(500).json({
         success: false,
         message: "Error updating user",
         error: error.message,
@@ -172,52 +206,58 @@ class AuthController {
 
 
 
-
-  async delete(req, res){
+  async delete(req, res) {
     try {
-        const id = req.params.id;
-        const data = await authModel.findByIdAndDelete(id);
-        if(!data){
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            })
+      const id = req.params.id;
+      const data = await authModel.findByIdAndDelete(id);
+      if (!data) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+      if (data && data.profile_image) {
+        const imagePath = data.profile_image;
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
         }
-        if(data && data.profile_image){
-          const imagePath = data.profile_image;
-          if(fs.existsSync(imagePath)){
-            fs.unlinkSync(imagePath);
-          }
-        }
-        return res.status(200).json({
-            success: true,
-            message: "User deleted successfully"
-        })
+      }
+      return res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
+      });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error deleting user",
-            error: error.message
-        })  
+      res.status(500).json({
+        success: false,
+        message: "Error deleting user",
+        error: error.message,
+      });
     }
   }
 
 
 
 
-  async getUser(req,res){
+
+
+
+
+
+  
+
+  async getUser(req, res) {
     try {
       res.status(200).json({
         success: true,
         message: "Users retrieved successfully",
-        data: req.user
-      })
+        data: req.user,
+      });
     } catch (error) {
       res.status(500).json({
         success: false,
         message: "Error retrieving users",
-        error: error.message
-      })
+        error: error.message,
+      });
     }
   }
 }
