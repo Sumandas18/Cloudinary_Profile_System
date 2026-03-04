@@ -33,7 +33,7 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Dashboard</h1>
+        <h1 className="text-3xl font-extrabold text-white mb-8">Dashboard</h1>
         
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6">{error}</div>
