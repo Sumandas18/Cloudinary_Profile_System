@@ -19,7 +19,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ user, isOwner }) => {
     if (!imagePath) return '';
     if (imagePath.startsWith('http')) return imagePath;
     const normalized = imagePath.replace(/\\/g, '/');
-    return normalized.startsWith('/') ? `${API_URL}${normalized}` : `${API_URL}/${normalized}`;
+    const cleanPath = normalized.startsWith('/') ? normalized.substring(1) : normalized;
+    return `${API_URL}/${cleanPath}`;
   };
 
   return (

@@ -42,7 +42,7 @@ class blogController {
 
             await newPost.save();
 
-            await newPost.populate("blog_author", "user_name");
+            await newPost.populate("blog_author", "name email profile_image");
 
             return res.status(statusCode.SUCCESS).json({
                 success: true,
@@ -61,7 +61,7 @@ class blogController {
     async getAllPosts(req, res) {
         try {
             const posts = await BlogModel.find()
-                .populate("blog_author", "user_name user_email user_profile_image")
+                .populate("blog_author", "name email profile_image")
                 .sort({ createdAt: -1 });
 
             return res.status(statusCode.SUCCESS || 200).json({

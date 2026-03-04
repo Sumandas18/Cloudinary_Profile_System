@@ -22,7 +22,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
-    return null; // Don't render anything if redirecting
+    return null;
   }
 
   return <>{children}</>;
