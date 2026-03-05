@@ -3,9 +3,12 @@ const jwt = require("jsonwebtoken");
 const path = require("path");
 const fs = require("fs");
 const authModel = require("../models/authModel");
-const { authValidation, updateValidation } = require("../utils/schemaValidation");
+const {
+  authValidation,
+  updateValidation,
+} = require("../utils/schemaValidation");
 const deleteFile = require("../utils/deleteImage");
-
+const StatusCode = require("../utils/statusCode");
 
 const SALT = 10;
 
@@ -21,7 +24,7 @@ class AuthController {
       };
       const { error, value } = authValidation.validate(authData);
       if (error) {
-        return res.status(400).json({
+        return res.status(StatusCode.BAD_REQUEST).json({
           success: false,
           message: "Validation error",
           error: error.message,
@@ -30,7 +33,7 @@ class AuthController {
 
       const exisutingUser = await authModel.findOne({ email: value.email });
       if (exisutingUser) {
-        return res.status(400).json({
+        return res.status(StatusCode.BAD_REQUEST).json({
           success: false,
           message: "User already exists with this email",
         });
@@ -44,13 +47,13 @@ class AuthController {
         profile_image: value.profile_image,
       });
       const result = await newUser.save();
-      res.status(201).json({
+      res.status(StatusCode.CREATED).json({
         success: true,
         message: "User registered successfully",
         data: result,
       });
     } catch (error) {
-      res.status(500).json({
+      res.status(StatusCode.SERVER_ERROR).json({
         success: false,
         message: "Error registering user",
         error: error.message,
@@ -58,25 +61,19 @@ class AuthController {
     }
   }
 
-
-
-
-
-
-
   async login(req, res) {
     try {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({
+        return res.status(StatusCode.BAD_REQUEST).json({
           success: false,
           message: "Email and password are required",
         });
       }
       const user = await authModel.findOne({ email });
       if (!user) {
-        return res.status(400).json({
+        return res.status(StatusCode.BAD_REQUEST).json({
           success: false,
           message: "Invalid email",
         });
@@ -84,7 +81,7 @@ class AuthController {
 
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
-        return res.status(400).json({
+        return res.status(StatusCode.BAD_REQUEST).json({
           success: false,
           message: "Invalid password",
         });
@@ -121,13 +118,6 @@ class AuthController {
     }
   }
 
-
-
-
-
-
-
-
   async update(req, res) {
     try {
       const id = req.params.id;
@@ -140,14 +130,18 @@ class AuthController {
       const user = await authModel.findById(id);
 
       if (!user) {
-        return res.status(404).json({
+        return res.status(StatusCode.NOT_FOUND).json({
           success: false,
           message: "User not found",
         });
       }
       if (req.file) {
         if (user.profile_image) {
-          const oldImagePath = path.join(__dirname, "../../", user.profile_image);
+          const oldImagePath = path.join(
+            __dirname,
+            "../../",
+            user.profile_image,
+          );
           deleteFile(oldImagePath);
         }
         updateData.profile_image = `uploads/${req.file.filename}`;
@@ -160,11 +154,15 @@ class AuthController {
       if (error) {
         const messages = error.details.map((err) => err.message);
         if (req.file) {
-          const uploadedFile = path.join(__dirname, "../../uploads", req.file.filename);
+          const uploadedFile = path.join(
+            __dirname,
+            "../../uploads",
+            req.file.filename,
+          );
           deleteFile(uploadedFile);
         }
 
-        return res.status(400).json({
+        return res.status(StatusCode.BAD_REQUEST).json({
           success: false,
           message: messages,
         });
@@ -186,7 +184,7 @@ class AuthController {
         updatedAt: updatedUser.updatedAt,
       };
 
-      return res.status(200).json({
+      return res.status(StatusCode.SUCCESS).json({
         success: true,
         message: "User updated successfully",
         data: responseUser,
@@ -194,7 +192,7 @@ class AuthController {
     } catch (error) {
       console.error(error);
 
-      return res.status(500).json({
+      return res.status(StatusCode.SERVER_ERROR).json({
         success: false,
         message: "Error updating user",
         error: error.message,
@@ -202,16 +200,12 @@ class AuthController {
     }
   }
 
-
-
-
-
   async delete(req, res) {
     try {
       const id = req.params.id;
       const data = await authModel.findByIdAndDelete(id);
       if (!data) {
-        return res.status(404).json({
+        return res.status(StatusCode.NOT_FOUND).json({
           success: false,
           message: "User not found",
         });
@@ -222,12 +216,12 @@ class AuthController {
           fs.unlinkSync(imagePath);
         }
       }
-      return res.status(200).json({
+      return res.status(StatusCode.SUCCESS).json({
         success: true,
         message: "User deleted successfully",
       });
     } catch (error) {
-      res.status(500).json({
+      res.status(StatusCode.SERVER_ERROR).json({
         success: false,
         message: "Error deleting user",
         error: error.message,
@@ -235,25 +229,15 @@ class AuthController {
     }
   }
 
-
-
-
-
-
-
-
-
-  
-
   async getUser(req, res) {
     try {
-      res.status(200).json({
+      res.status(StatusCode.SUCCESS).json({
         success: true,
         message: "Users retrieved successfully",
         data: req.user,
       });
     } catch (error) {
-      res.status(500).json({
+      res.status(StatusCode.SERVER_ERROR).json({
         success: false,
         message: "Error retrieving users",
         error: error.message,
